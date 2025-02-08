@@ -112,13 +112,19 @@ const Button = styled(motion.button)<{ variant: 'yes' | 'no' }>`
   backdrop-filter: blur(5px);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  position: ${({ variant }) => variant === 'no' ? 'absolute' : 'relative'};
+  position: relative;
+  z-index: 10;
 
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     border-color: rgba(255, 255, 255, 0.8);
   }
+`;
+
+const NoButtonWrapper = styled(motion.div)`
+  position: absolute;
+  z-index: 10;
 `;
 
 const CountdownContainer = styled(motion.div)`
@@ -228,15 +234,21 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, showCountdown
   }, [onAccept, navigate]);
 
   const moveNoButton = useCallback(() => {
-    const maxWidth = window.innerWidth - 200;
-    const maxHeight = window.innerHeight - 100;
-    const x = Math.random() * maxWidth - maxWidth / 2;
-    const y = Math.random() * maxHeight - maxHeight / 2;
-    setNoButtonPosition({ x, y });
+    const padding = 100; // Padding from edges
+    const maxWidth = window.innerWidth - padding * 2;
+    const maxHeight = window.innerHeight - padding * 2;
+    
+    // Calculate new position with padding
+    const newX = Math.random() * maxWidth - maxWidth / 2;
+    const newY = Math.random() * maxHeight - maxHeight / 2;
+    
+    setNoButtonPosition({ x: newX, y: newY });
     
     // Add floating heart
     const heartId = Date.now();
-    setHearts(prev => [...prev, { id: heartId, x, y }]);
+    const heartX = newX + window.innerWidth / 2;
+    const heartY = newY + window.innerHeight / 2;
+    setHearts(prev => [...prev, { id: heartId, x: heartX, y: heartY }]);
     setTimeout(() => {
       setHearts(prev => prev.filter(heart => heart.id !== heartId));
     }, 1000);
@@ -324,29 +336,32 @@ const ProposalScreen: React.FC<ProposalScreenProps> = ({ onAccept, showCountdown
           >
             YES! 💝
           </Button>
-          <Button
-            variant="no"
-            style={{ 
-              position: 'fixed',
-              left: `${noButtonPosition.x + window.innerWidth / 2}px`,
-              top: `${noButtonPosition.y + window.innerHeight / 2}px`,
-              transform: 'translate(-50%, -50%)'
-            }}
-            onClick={moveNoButton}
-            onMouseEnter={moveNoButton}
-            whileHover={{ scale: 1.1 }}
-            animate={{ 
-              x: noButtonPosition.x,
-              y: noButtonPosition.y,
-              transition: { type: "spring", stiffness: 300, damping: 20 }
-            }}
-            initial={{ opacity: 0, scale: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            NO 🙈
-          </Button>
         </ButtonContainer>
       </Content>
+
+      <NoButtonWrapper
+        initial={{ opacity: 1, x: 0, y: 0 }}
+        animate={{ 
+          x: noButtonPosition.x,
+          y: noButtonPosition.y,
+        }}
+        transition={{ 
+          type: "spring",
+          stiffness: 300,
+          damping: 20,
+          mass: 0.5
+        }}
+      >
+        <Button
+          variant="no"
+          onClick={moveNoButton}
+          onMouseEnter={moveNoButton}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          NO 🙈
+        </Button>
+      </NoButtonWrapper>
 
       <AnimatePresence>
         {hearts.map(heart => (

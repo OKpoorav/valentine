@@ -1,7 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styled from '@emotion/styled';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+
+// Import images
+const memoryImages = {
+  memory1: '/images/first day.jpeg',
+  memory2: '/images/first date.jpeg',
+  memory3: '/images/adventures.jpeg',
+  memory4: '/images/you the best.jpeg',
+  memory5: '/images/future.jpeg',
+};
 
 const Container = styled.div`
   min-height: 100vh;
@@ -70,6 +79,11 @@ const TimelineItem = styled(motion.div)`
     &::before {
       left: -0.5rem;
     }
+
+    .memory-image {
+      left: -100%;
+      right: auto;
+    }
   }
 
   &:nth-of-type(even) {
@@ -78,6 +92,11 @@ const TimelineItem = styled(motion.div)`
 
     &::before {
       right: -0.5rem;
+    }
+
+    .memory-image {
+      right: -100%;
+      left: auto;
     }
   }
 
@@ -102,6 +121,15 @@ const TimelineContent = styled(motion.div)`
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: transform 0.3s ease;
+
+  img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
 
   h2 {
     font-size: 1.8rem;
@@ -154,11 +182,12 @@ const LoveSlider = styled(motion.div)`
   }
 `;
 
-const HeartPopup = styled(motion.div)`
+const HeartEmoji = styled(motion.div)`
   position: fixed;
+  font-size: 24px;
   pointer-events: none;
-  font-size: 2rem;
-  z-index: 10;
+  z-index: 1000;
+  user-select: none;
 `;
 
 const LoveOverflow = styled(motion.div)`
@@ -309,11 +338,11 @@ const LoveLetter = styled(motion.div)`
 const FloatingImage = styled(motion.div)`
   position: fixed;
   pointer-events: none;
-  width: 60px;
-  height: 60px;
-  border-radius: 10px;
+  width: 200px;
+  height: 200px;
+  border-radius: 15px;
   background: white;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   z-index: 10;
 
@@ -321,6 +350,9 @@ const FloatingImage = styled(motion.div)`
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
+    transform: scale(1.1);
+    transition: transform 0.3s ease;
   }
 
   &::after {
@@ -330,7 +362,9 @@ const FloatingImage = styled(motion.div)`
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(45deg, rgba(255, 107, 107, 0.5), rgba(255, 75, 141, 0.5));
+    background: linear-gradient(45deg, rgba(255, 107, 107, 0.2), rgba(255, 75, 141, 0.2));
+    pointer-events: none;
+    mix-blend-mode: overlay;
   }
 `;
 
@@ -361,44 +395,129 @@ const LoveMessage = styled(motion.div)`
   }
 `;
 
+const ImageModal = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  cursor: pointer;
+
+  img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+`;
+
+const MemoryImage = styled(motion.div)`
+  position: absolute;
+  top: 0;
+  width: calc(100% - 1rem);
+  height: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transform: none;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: scale(1.02);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+
+    &[alt="Our First Date"] {
+      object-position: center center;
+    }
+
+    &[alt="Adventures Together"] {
+      object-position: top center;
+    }
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255, 107, 107, 0.1), rgba(255, 75, 141, 0.1));
+    pointer-events: none;
+  }
+`;
+
 const memories = [
   {
     title: 'How We Met',
     content: 'That magical moment when our paths crossed...',
-    date: 'The Beginning'
+    date: 'The Beginning',
+    image: '/images/first day.jpeg'
   },
   {
     title: 'Our First Date',
     content: 'Remember that nervous excitement?',
-    date: 'A Special Day'
+    date: 'A Special Day',
+    image: '/images/first date.jpeg'
   },
   {
     title: 'Adventures Together',
     content: 'Every moment with you is an adventure...',
-    date: 'Ongoing'
+    date: 'Ongoing',
+    image: '/images/adventures.jpeg'
   },
   {
     title: 'Why You\'re the Best',
-    content: 'Your smile, your kindness, your everything...',
-    date: 'Always'
+    content: 'Your smile, your eyes, your personality, your everything...',
+    date: 'Always',
+    image: '/images/you the best.jpeg'
   },
   {
     title: 'Our Future Together',
     content: 'The best is yet to come...',
-    date: 'Forever'
+    date: 'Forever',
+    image: '/images/future.jpeg'
   }
 ];
+
+const preloadImages = () => {
+  Object.values(memoryImages).forEach((src, index) => {
+    const img = new Image();
+    img.src = src;
+    console.log(`Preloading image ${index + 1}:`, src);
+    img.onload = () => console.log(`Successfully preloaded image ${index + 1}`);
+    img.onerror = (e) => console.error(`Failed to preload image ${index + 1}:`, e);
+  });
+};
 
 const MemoryLane = () => {
   const [sliderValue, setSliderValue] = useState(0);
   const [sliderMessage, setSliderMessage] = useState('');
   const [secretClicks, setSecretClicks] = useState(0);
   const [showLoveLetter, setShowLoveLetter] = useState(false);
-  const [hearts, setHearts] = useState<{ id: number; x: number; y: number }[]>([]);
   const [showMaxLoveAnimation, setShowMaxLoveAnimation] = useState(false);
-  const [showLoveMessage, setShowLoveMessage] = useState(false);
-  const [floatingImages, setFloatingImages] = useState<{ id: number; x: number; y: number; rotation: number }[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [hearts, setHearts] = useState<Array<{ id: number; left: number }>>([]);
   const { scrollYProgress } = useScroll();
+
+  useEffect(() => {
+    preloadImages();
+  }, []);
 
   const getSliderMessage = (value: number) => {
     if (value < 30) return "Hmm... not enough! 🥺";
@@ -407,42 +526,22 @@ const MemoryLane = () => {
     return "Almost there! 💕";
   };
 
-  const createHeart = () => {
-    const heart = {
-      id: Date.now(),
-      x: Math.random() * window.innerWidth,
-      y: window.innerHeight
-    };
-    setHearts(prev => [...prev, heart]);
-    setTimeout(() => {
-      setHearts(prev => prev.filter(h => h.id !== heart.id));
-    }, 2000);
-  };
-
-  const createImageBurst = () => {
-    const numImages = 12;
-    const newImages = Array.from({ length: numImages }, (_, i) => ({
-      id: Date.now() + i,
-      x: window.innerWidth / 2 + (Math.random() - 0.5) * 100,
-      y: window.innerHeight / 2,
-      rotation: Math.random() * 360
+  const showHearts = () => {
+    // Clear existing hearts
+    setHearts([]);
+    
+    // Create 30 hearts with different positions
+    const newHearts = Array.from({ length: 30 }, (_, index) => ({
+      id: Date.now() + index,
+      left: Math.random() * window.innerWidth
     }));
-    setFloatingImages(newImages);
+    
+    setHearts(newHearts);
 
-    // Clear images after animation
+    // Remove hearts after animation
     setTimeout(() => {
-      setFloatingImages([]);
-      setShowLoveMessage(true);
+      setHearts([]);
     }, 3000);
-
-    // Hide message after some time
-    setTimeout(() => {
-      setShowLoveMessage(false);
-    }, 6000);
-  };
-
-  const handleHeartClick = () => {
-    createImageBurst();
   };
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -450,14 +549,12 @@ const MemoryLane = () => {
     setSliderValue(value);
     setSliderMessage(getSliderMessage(value));
 
-    if (value === 100 && !showMaxLoveAnimation) {
+    if (value === 100) {
+      showHearts();
       setShowMaxLoveAnimation(true);
-      // Create multiple hearts
-      for (let i = 0; i < 10; i++) {
-        setTimeout(createHeart, i * 200);
-      }
-      // Hide the animation after some time
-      setTimeout(() => setShowMaxLoveAnimation(false), 3000);
+      setTimeout(() => {
+        setShowMaxLoveAnimation(false);
+      }, 3000);
     }
   };
 
@@ -491,6 +588,15 @@ const MemoryLane = () => {
               animate={inView ? { opacity: 1, x: 0, y: 0 } : {}}
               transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
             >
+              <MemoryImage
+                className="memory-image"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={inView ? { opacity: 1, scale: 1 } : {}}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                onClick={() => setSelectedImage(memory.image)}
+              >
+                <img src={memory.image} alt={memory.title} loading="lazy" />
+              </MemoryImage>
               <TimelineContent>
                 <h2>{memory.title}</h2>
                 <p>{memory.content}</p>
@@ -525,62 +631,32 @@ const MemoryLane = () => {
       </LoveSlider>
 
       <AnimatePresence>
-        {hearts.map(heart => (
-          <HeartPopup
+        {hearts.map((heart) => (
+          <HeartEmoji
             key={heart.id}
-            initial={{ x: heart.x, y: heart.y, scale: 0, opacity: 1 }}
+            initial={{ 
+              y: window.innerHeight,
+              x: heart.left,
+              opacity: 0,
+              scale: 0
+            }}
             animate={{
-              y: heart.y - 200,
-              scale: 1,
-              opacity: 0
+              y: -100,
+              opacity: [0, 1, 0],
+              scale: [0, 1.5, 1],
+              x: heart.left + (Math.random() * 100 - 50)
             }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 2, ease: "easeOut" }}
-            onClick={handleHeartClick}
-            style={{ cursor: 'pointer' }}
+            transition={{
+              duration: 3,
+              ease: "easeOut",
+              opacity: { duration: 3, times: [0, 0.2, 1] },
+              scale: { duration: 3, times: [0, 0.2, 1] }
+            }}
           >
             💖
-          </HeartPopup>
+          </HeartEmoji>
         ))}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {floatingImages.map((img) => (
-          <FloatingImage
-            key={img.id}
-            initial={{ 
-              x: img.x,
-              y: img.y,
-              scale: 0,
-              rotate: img.rotation,
-              opacity: 0
-            }}
-            animate={{
-              x: img.x + (Math.random() - 0.5) * 400,
-              y: img.y - Math.random() * 400,
-              scale: 1,
-              opacity: [0, 1, 1, 0],
-            }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 2, ease: "easeOut" }}
-          >
-            <img src={`/images/memory${Math.floor(Math.random() * 5) + 1}.jpg`} alt="Memory" />
-          </FloatingImage>
-        ))}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showLoveMessage && (
-          <LoveMessage
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: "spring", duration: 0.5 }}
-          >
-            <h3>Our Love Story ❤️</h3>
-            <p>Every moment with you is a treasure, every memory a precious gift. I love you more than words can say! 💝</p>
-          </LoveMessage>
-        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -632,6 +708,26 @@ const MemoryLane = () => {
             </p>
             <button onClick={() => setShowLoveLetter(false)}>Close with Love ❤️</button>
           </LoveLetter>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedImage && (
+          <ImageModal
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedImage(null)}
+          >
+            <motion.img
+              src={selectedImage}
+              alt="Full size memory"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              transition={{ type: "spring", duration: 0.5 }}
+            />
+          </ImageModal>
         )}
       </AnimatePresence>
     </Container>
